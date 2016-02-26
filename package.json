@@ -1,9 +1,13 @@
 {
   "private": true,
   "dependencies": {
-    "jscs": "2.2.1"
+    "jscs": "2.2.1",
+    "mongodb": "^2.1.7"
   },
   "scripts": {
     "lint": "jscs ."
+  },
+  "devDependencies": {
+    "mongodb": "^2.1.7"
   }
 }
