@@ -1,25 +1,62 @@
 var MongoClient = require('mongodb').MongoClient;
 
-function doQuery(objectForQuery) {
-    var findObj = {
+function doQuery(objectForQuery, callback) {
+    MongoClient.connect(objectForQuery.url, function (err, db) {
+        if (err) {
+            return console.log(err);
+        }
+        var collection = db.collection(objectForQuery.collectionName);
+        objectForQuery.queryFunction(collection, function (err, result) {
+            callback(err, result);
+            db.close();
+        });
+    });
+}
+
+function createOperation(objectForQuery) {
+    var operations = {
         find: function (callback) {
-            MongoClient.connect(objectForQuery.url, function (err, db) {
-                if (err) {
-                    return console.log(err);
+            var func = function (collection, innerCallback) {
+                collection.find(objectForQuery.query).toArray(innerCallback);
+            };
+            objectForQuery.queryFunction = func;
+            doQuery(objectForQuery, callback);
+        },
+        remove: function (callback) {
+            var func = function (collection, innerCallback) {
+                collection.deleteMany(objectForQuery.query, innerCallback);
+            };
+            objectForQuery.queryFunction = func;
+            doQuery(objectForQuery, callback);
+        },
+        insert: function (newObject, callback) {
+            var func = function (collection, innerCallback) {
+                collection.insertOne(newObject, innerCallback);
+            };
+            objectForQuery.queryFunction = func;
+            doQuery(objectForQuery, callback);
+        },
+        set: function (newField, value) {
+            var innerQuery = {};
+            innerQuery[newField] = value;
+            var setQuery = {$set: innerQuery};
+            _this = this;
+            return {
+                update: function (callback) {
+                    var func = function (collection, innerCallback) {
+                        collection.updateMany(objectForQuery.query, setQuery, innerCallback);
+                    };
+                    objectForQuery.queryFunction = func;
+                    doQuery(objectForQuery, callback);
                 }
-                var col = db.collection(objectForQuery.collectionName);
-                col.find(objectForQuery.query).toArray(function (err, result) {
-                    callback(err, result);
-                    db.close();
-                });
-            });
+            };
         }
     };
-    return findObj;
-};
+    return operations;
+}
 
 function createQuery(objectForQuery, field, not) {
-    var operations = {
+    var queryParams = {
         not: function () {
             return createQuery(objectForQuery, field, true);
         },
@@ -41,19 +78,23 @@ function createQuery(objectForQuery, field, not) {
         },
         addQuery: function (newQuery) {
             objectForQuery.query[field] = newQuery;
-            return doQuery(objectForQuery);
+            return createOperation(objectForQuery);
         }
     };
-    return operations;
+    return queryParams;
 }
 
 var ObjectForQuery = function (url, collectionName) {
-    this.collectionName = collectionName;
     this.url = url;
+    this.collectionName = collectionName;
     this.where = function (field) {
         return createQuery(this, field);
     };
+    this.insert = function (newObject, callback) {
+        createOperation(this).insert(newObject, callback);
+    };
     this.query = {};
+    this.queryFunction = null;
 };
 
 module.exports.server = function (url) {
