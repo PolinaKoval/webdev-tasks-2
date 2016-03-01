@@ -50,6 +50,9 @@ function createOperation(objectForQuery) {
                     doQuery(objectForQuery, callback);
                 }
             };
+        },
+        where: function (field) {
+            return createQuery(objectForQuery, field);
         }
     };
     return operations;
