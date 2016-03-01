@@ -80,7 +80,9 @@ function createQuery(objectForQuery, field, not) {
             return this.addQuery(query);
         },
         addQuery: function (newQuery) {
-            objectForQuery.query[field] = newQuery;
+            var query = {};
+            query[field] = newQuery;
+            objectForQuery.query['$and'].push(query);
             return createOperation(objectForQuery);
         }
     };
@@ -96,7 +98,7 @@ var ObjectForQuery = function (url, collectionName) {
     this.insert = function (newObject, callback) {
         createOperation(this).insert(newObject, callback);
     };
-    this.query = {};
+    this.query = {$and:[]};
     this.queryFunction = null;
 };
 
