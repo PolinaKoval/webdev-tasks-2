@@ -1,11 +1,12 @@
-var MongoClient = require('mongodb').MongoClient;
+'use strict';
+const MongoClient = require('mongodb').MongoClient;
 
 function doQuery(objectForQuery, callback) {
     MongoClient.connect(objectForQuery.url, function (err, db) {
         if (err) {
             return console.log(err);
         }
-        var collection = db.collection(objectForQuery.collectionName);
+        let collection = db.collection(objectForQuery.collectionName);
         objectForQuery.queryFunction(collection, function (err, result) {
             callback(err, result);
             db.close();
@@ -14,36 +15,36 @@ function doQuery(objectForQuery, callback) {
 }
 
 function createOperation(objectForQuery) {
-    var operations = {
+    let operations = {
         find: function (callback) {
-            var func = function (collection, innerCallback) {
+            let func = function (collection, innerCallback) {
                 collection.find(objectForQuery.query).toArray(innerCallback);
             };
             objectForQuery.queryFunction = func;
             doQuery(objectForQuery, callback);
         },
         remove: function (callback) {
-            var func = function (collection, innerCallback) {
+            let func = function (collection, innerCallback) {
                 collection.deleteMany(objectForQuery.query, innerCallback);
             };
             objectForQuery.queryFunction = func;
             doQuery(objectForQuery, callback);
         },
         insert: function (newObject, callback) {
-            var func = function (collection, innerCallback) {
+            let func = function (collection, innerCallback) {
                 collection.insertOne(newObject, innerCallback);
             };
             objectForQuery.queryFunction = func;
             doQuery(objectForQuery, callback);
         },
         set: function (newField, value) {
-            var innerQuery = {};
+            let innerQuery = {};
             innerQuery[newField] = value;
-            var setQuery = {$set: innerQuery};
+            let setQuery = {$set: innerQuery};
             _this = this;
             return {
                 update: function (callback) {
-                    var func = function (collection, innerCallback) {
+                    let func = function (collection, innerCallback) {
                         collection.updateMany(objectForQuery.query, setQuery, innerCallback);
                     };
                     objectForQuery.queryFunction = func;
@@ -59,28 +60,28 @@ function createOperation(objectForQuery) {
 }
 
 function createQuery(objectForQuery, field, not) {
-    var queryParams = {
+    let queryParams = {
         not: function () {
             return createQuery(objectForQuery, field, true);
         },
         equal: function (param) {
-            var query = not ? { $ne: param } : param;
+            let query = not ? { $ne: param } : param;
             return this.addQuery(query);
         },
         lessThan: function (num) {
-            var query = not ? { $gte: num } : { $lt: num };
+            let query = not ? { $gte: num } : { $lt: num };
             return this.addQuery(query);
         },
         greatThan: function (num) {
-            var query = not ? { $lte: num } : { $gt: num };
+            let query = not ? { $lte: num } : { $gt: num };
             return this.addQuery(query);
         },
         include: function (params) {
-            var query = not ? { $nin: params } : { $in: params };
+            let query = not ? { $nin: params } : { $in: params };
             return this.addQuery(query);
         },
         addQuery: function (newQuery) {
-            var query = {};
+            let query = {};
             query[field] = newQuery;
             objectForQuery.query['$and'].push(query);
             return createOperation(objectForQuery);
@@ -89,7 +90,7 @@ function createQuery(objectForQuery, field, not) {
     return queryParams;
 }
 
-var ObjectForQuery = function (url, collectionName) {
+let ObjectForQuery = function (url, collectionName) {
     this.url = url;
     this.collectionName = collectionName;
     this.where = function (field) {
@@ -103,7 +104,7 @@ var ObjectForQuery = function (url, collectionName) {
 };
 
 module.exports.server = function (url) {
-    var collection = {
+    let collection = {
         collection: function (collectionName) {
             return new ObjectForQuery(url, collectionName);
         }
