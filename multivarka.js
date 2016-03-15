@@ -33,6 +33,12 @@ const MongoFunc = {
     }
 };
 
+/**
+ * Преобразует запрос представленный в виде массива или объекта
+ * в корректный для Mongo и добавляет ключ(по умолчанию '$and')
+ * @param {Array|Object} [query] запрос
+ * @param {String} [key] ключь для объединения всех объектов из query
+*/
 function correctQuery(query, key) {
     key = key || '$and';
     return Object.keys(query).length ? {[key]: query} : {};
@@ -48,25 +54,40 @@ function correctQuery(query, key) {
 */
 const operations = {
     find: function (callback) {
-        this.doQuery('find', callback);
+        this._doQuery('find', callback);
     },
     remove: function (callback) {
-        this.doQuery('remove', callback);
+        this._doQuery('remove', callback);
     },
     update: function (callback) {
-        this.doQuery('update', callback);
+        this._doQuery('update', callback);
     },
     insert: function (newObj, callback) {
-        this.doQuery('insert', callback, newObj);
+        this._doQuery('insert', callback, newObj);
     },
     where: function (field) {
         return new ParamsSetter(this, field ? [field] : []);
     },
     set: function (newField, value) {
-        if (arguments.length == 2) {
+        if (arguments.length === 2) {
             this.setQuery[newField] = value;
         }
         return this;
+    }
+};
+
+const settings = {
+    equal: function (value) {
+        return this._addParam(value, ['$eq', '$ne']);
+    },
+    lessThan: function (num) {
+        return this._addParam(num, ['$lt', '$gte']);
+    },
+    greatThan: function (num) {
+        return this._addParam(num, ['$gt', '$lte']);
+    },
+    include: function (value) {
+        return this._addParam(value, ['$in', '$nin']);
     }
 };
 
@@ -81,21 +102,19 @@ const operations = {
  */
 let ParamsSetter = function (queryObj, fields, not) {
     let index = not ? 1 : 0;
-    this.not = () => new ParamsSetter(queryObj, fields, true);
-    this.equal = value => this.addParam(value, ['$eq', '$ne'][index]);
-    this.lessThan = num => this.addParam(num, ['$lt', '$gte'][index]);
-    this.greatThan = num => this.addParam(num, ['$gt', '$lte'][index]);
-    this.include = value => this.addParam(value, ['$in', '$nin'][index]);
+    this.not = () => new ParamsSetter(queryObj, fields, true);  
     this.where = field => {
-        fields.push(field);
-        return new ParamsSetter(queryObj, fields, not);
+        fields = field ? fields.push(field) : fields;
+        return new ParamsSetter(queryObj, fields);
     };
-    this.addParam = (value, param) => {
+    this._addParam = (value, param) => {
+        param = param[index];
         let newQuery = {[param]: value};
         let queries = fields.map(field => ({[field]: newQuery}));
         [].push.apply(queryObj.query, queries);
         return queryObj;
     };
+    Object.setPrototypeOf(this, settings);
 };
 
 /**
@@ -111,7 +130,7 @@ let ObjectForQuery = function (url, collectionName) {
     this.query = [];
     this.setQuery = {};
     this.queryFunc = null;
-    this.doQuery = doQuery;
+    this._doQuery = doQuery;
     Object.setPrototypeOf(this, operations);
 };
 
@@ -138,10 +157,11 @@ function doQuery(operation, callback, insertObj) {
 function connectMongo(callback) {
     MongoClient.connect.call(this, this.url, (err, db) => {
         if (err) {
-            return console.log(err);
+            callback(err);
+            return;
         }
         this.collection = db.collection(this.collectionName);
-        this.queryFunc(function (err, result) {
+        this.queryFunc((err, result) => {
             callback(err, result);
             db.close();
         });
