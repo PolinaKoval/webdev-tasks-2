@@ -69,7 +69,7 @@ const operations = {
         return new ParamsSetter(this, field ? [field] : []);
     },
     set: function (newField, value) {
-        if (arguments.length === 2) {
+        if (value) {
             this.setQuery[newField] = value;
         }
         return this;
