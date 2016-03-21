@@ -66,7 +66,7 @@ const operations = {
         this._doQuery('insert', callback, newObj);
     },
     where: function (field) {
-        return new ParamsSetter(this, field ? [field] : []);
+        return new ParamsSetter(this, field);
     },
     set: function (newField, value) {
         if (value) {
@@ -101,6 +101,8 @@ const settings = {
  * @this {ParamsSetter}
  */
 let ParamsSetter = function (queryObj, fields, not) {
+    fields = fields instanceof Array ? fields :
+        fields ? [fields] : [];
     let index = not ? 1 : 0;
     this.not = () => new ParamsSetter(queryObj, fields, true);  
     this.where = field => {
