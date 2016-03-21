@@ -101,8 +101,11 @@ const settings = {
  * @this {ParamsSetter}
  */
 let ParamsSetter = function (queryObj, fields, not) {
-    fields = fields instanceof Array ? fields :
-        fields ? [fields] : [];
+    if (fields) {
+        fields = fields instanceof Array ? fields : [fields];
+    } else {
+        fields = [];
+    }
     let index = not ? 1 : 0;
     this.not = () => new ParamsSetter(queryObj, fields, true);  
     this.where = field => {
